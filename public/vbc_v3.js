@@ -3,23 +3,138 @@ console.log("🚀 vbc_v3.js loaded!");
 
 (function() {
   //
-  // 1. Inject CSS (including link styling)
+  // 1. Inject all widget CSS
   //
   const style = document.createElement("style");
   style.textContent = `
-    /* — your existing widget CSS above — */
+    /* Container */
+    #chat-widget {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      font-family: Arial, sans-serif;
+      z-index: 9999;
+    }
 
-    /* ensure bot links are clickable */
-    #chat-widget .chat-body .message.bot a {
+    /* Chat button */
+    #chat-widget .chat-button {
+      background: #c8102e;
+      color: #fff;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    /* Chat window */
+    #chat-widget .chat-window {
+      display: none;
+      flex-direction: column;
+      width: 320px;
+      height: 420px;
+      background: #222;
+      color: #eee;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      margin-top: 10px;
+    }
+    #chat-widget.expanded .chat-window {
+      display: flex;
+    }
+
+    /* Header */
+    #chat-widget .chat-header {
+      background: #c8102e;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+    }
+    #chat-widget .chat-header .close-button {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    /* Body */
+    #chat-widget .chat-body {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Input */
+    #chat-widget .chat-input {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #444;
+    }
+    #chat-widget .chat-input input {
+      flex: 1;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: none;
+      margin-right: 6px;
+    }
+    #chat-widget .chat-input button {
+      background: #c8102e;
+      border: none;
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    /* Messages */
+    #chat-widget .message {
+      max-width: 85%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      word-wrap: break-word;
+    }
+    #chat-widget .message.user {
+      background: #333;
+      align-self: flex-end;
+    }
+    #chat-widget .message.bot {
+      background: #444;
+      align-self: flex-start;
+    }
+    /* Clickable links in bot messages */
+    #chat-widget .message.bot a {
       color: #1a73e8;
       text-decoration: underline;
       cursor: pointer;
     }
-    #chat-widget .chat-body .message {
-      white-space: pre-wrap;
-    }
 
-    /* — your existing widget CSS below — */
+    /* Typing indicator */
+    #chat-widget .typing {
+      display: flex;
+      gap: 4px;
+      align-self: flex-start;
+    }
+    #chat-widget .typing span {
+      width: 6px;
+      height: 6px;
+      background: #888;
+      border-radius: 50%;
+      animation: blink 1.4s infinite ease-in-out;
+    }
+    #chat-widget .typing span:nth-child(2) { animation-delay: 0.2s; }
+    #chat-widget .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink {
+      0%, 80%, 100% { opacity: 0; }
+      40% { opacity: 1; }
+    }
   `;
   document.head.appendChild(style);
 
@@ -56,7 +171,7 @@ console.log("🚀 vbc_v3.js loaded!");
   let   threadId = null;
 
   //
-  // 4. Open/close logic
+  // 4. Open / close logic
   //
   btn.addEventListener("click", () => {
     widget.classList.add("expanded");
@@ -83,7 +198,7 @@ console.log("🚀 vbc_v3.js loaded!");
     msg.className = `message ${who}`;
 
     if (who === "bot") {
-      // Replace placeholder with real link
+      // Replace <CALENDLY> token with real Calendly link
       const withLink = text.replace(
         /<CALENDLY>/g,
         `<a href="https://calendly.com/vesselenyit/30min" target="_blank" rel="noopener noreferrer">Rezervă aici</a>`
@@ -149,8 +264,5 @@ console.log("🚀 vbc_v3.js loaded!");
   //
   // 7. Initial greeting
   //
-  appendMessage(
-    "Ceau! Bine ai venit la VBC Barbershop! Cum te pot ajuta?",
-    "bot"
-  );
+  appendMessage("Ceau! Bine ai venit la VBC Barbershop! Cum te pot ajuta?", "bot");
 })();
