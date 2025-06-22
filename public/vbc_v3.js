@@ -35,7 +35,7 @@ console.log("🚀 Secure vbc_v3.js loaded!");
   function appendMessage(text, who = "bot") {
     const div = document.createElement("div");
     div.className = "message " + who;
-    div.textContent = text;
+    div.innerHTML = text;
     body.appendChild(div);
     scrollToBottom();
   }
