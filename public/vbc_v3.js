@@ -2,12 +2,12 @@ console.log("🚀 Secure vbc_v3.js loaded!");
 
 (function () {
   const styleTag = document.createElement("style");
-  styleTag.textContent = `/* basic CSS omitted here for brevity — use your current styling */`;
+  styleTag.textContent = `/* your CSS styles here */`;
   document.head.appendChild(styleTag);
 
   const widget = document.createElement("div");
   widget.id = "chat-widget";
-  widget.innerHTML = `...`; // ← same HTML as your original widget
+  widget.innerHTML = `<!-- your full HTML for the widget should go here -->`;
   document.body.appendChild(widget);
 
   const btn = widget.querySelector(".chat-button");
@@ -23,8 +23,10 @@ console.log("🚀 Secure vbc_v3.js loaded!");
     widget.classList.add("expanded");
     input.focus();
   });
+
   closeBtn.addEventListener("click", () => widget.classList.remove("expanded"));
-  document.addEventListener("click", e => {
+
+  document.addEventListener("click", (e) => {
     if (!widget.contains(e.target)) widget.classList.remove("expanded");
   });
 
@@ -32,10 +34,16 @@ console.log("🚀 Secure vbc_v3.js loaded!");
     body.scrollTop = body.scrollHeight;
   }
 
+  function decodeHTMLEntities(str) {
+    const txt = document.createElement("textarea");
+    txt.innerHTML = str;
+    return txt.value;
+  }
+
   function appendMessage(text, who = "bot") {
     const div = document.createElement("div");
     div.className = "message " + who;
-    div.innerHTML = text;
+    div.innerHTML = text; // Now allows HTML
     body.appendChild(div);
     scrollToBottom();
   }
@@ -57,12 +65,14 @@ console.log("🚀 Secure vbc_v3.js loaded!");
     try {
       const r = await fetch("/api/sendMessage", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, threadId })
       });
       const j = await r.json();
       typingEl.remove();
       if (j.reply) {
-        appendMessage(j.reply.trim(), "bot");
+        const decoded = decodeHTMLEntities(j.reply.trim());
+        appendMessage(decoded, "bot");
         threadId = j.threadId;
       } else {
         appendMessage("Error: No reply received", "bot");
@@ -77,7 +87,8 @@ console.log("🚀 Secure vbc_v3.js loaded!");
     const t = input.value.trim();
     if (t) sendMessage(t);
   });
-  input.addEventListener("keypress", e => {
+
+  input.addEventListener("keypress", (e) => {
     if (e.key === "Enter" && input.value.trim()) {
       sendMessage(input.value.trim());
     }
