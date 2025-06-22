@@ -40,6 +40,6 @@ export default async function handler(req, res) {
 
 function getDateRange(preferred_day) {
   const start = new Date().toISOString();
-  const end = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString();
+  const end = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   return { start, end };
 }
