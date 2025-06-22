@@ -6,26 +6,28 @@ export default async function handler(req, res) {
   }
 
   const token = process.env.CALENDLY_API_KEY;
-  const userUri = barber === "robby"
-    ? "https://api.calendly.com/users/your-robby-id"
-    : "https://api.calendly.com/users/e97cfb9d-8610-4d2d-b401-7f1401ee2651";
 
-  const dateRange = getDateRange(preferred_day); // optional helper to limit to 1 day
+  // Replace this with your actual event_type URI
+  const eventTypeUri = "https://api.calendly.com/event_types/df329c53-bbc3-4e3b-9f4b-9c8149de4b82";
+
+  const dateRange = getDateRange(preferred_day); // Defaults to today–tomorrow
 
   try {
-    const response = await fetch(`https://api.calendly.com/scheduled_events?user=${encodeURIComponent(userUri)}&status=active&sort=start_time:asc&start_time=${dateRange.start}&end_time=${dateRange.end}`, {
+    const url = `https://api.calendly.com/event_type_available_times?event_type=${encodeURIComponent(eventTypeUri)}&start_time=${dateRange.start}&end_time=${dateRange.end}`;
+
+    const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      }
+        "Content-Type": "application/json",
+      },
     });
 
     const data = await response.json();
-    // Extract next 2–3 slots as needed
-    const slots = data.collection?.slice(0, 3).map(event => ({
-      time: event.start_time,
-      url: event.uri
-    })) || [];
+
+    const slots = (data.collection || []).map(slot => ({
+      start_time: slot.start_time,
+      end_time: slot.end_time,
+    }));
 
     res.status(200).json({ slots });
   } catch (err) {
@@ -34,10 +36,9 @@ export default async function handler(req, res) {
   }
 }
 
-// Optional helper to parse a specific day
+// Optional helper to specify date range
 function getDateRange(preferred_day) {
-  // For now just return full week range
   const start = new Date().toISOString();
-  const end = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const end = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(); // +1 day
   return { start, end };
 }
