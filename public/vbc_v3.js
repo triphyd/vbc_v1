@@ -40,13 +40,17 @@ console.log("🚀 Secure vbc_v3.js loaded!");
     return txt.value;
   }
 
-  function appendMessage(text, who = "bot") {
-    const div = document.createElement("div");
-    div.className = "message " + who;
-    div.innerHTML = text; // Now allows HTML
-    body.appendChild(div);
-    scrollToBottom();
-  }
+
+}
+
+function appendMessage(text, who = "bot") {
+  const div = document.createElement("div");
+  div.className = "message " + who;
+  div.innerHTML = decodeHTMLEntities(text); // decode entities first
+  body.appendChild(div);
+  scrollToBottom();
+}
+
 
   function appendTyping() {
     const t = document.createElement("div");
