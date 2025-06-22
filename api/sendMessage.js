@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey || !assistantId) {
-    console.error("Missing OpenAI key or assistant ID");
+    console.error("Missing OpenAI key or assistant ID", { apiKey, assistantId });
     return res.status(500).json({ error: "Missing API credentials" });
   }
 
@@ -27,14 +27,23 @@ export default async function handler(req, res) {
         body: "{}",
       });
       const threadData = await threadRes.json();
+      if (!threadRes.ok) {
+        console.error("Thread creation failed:", threadData);
+        throw new Error("Thread creation failed");
+      }
       threadId = threadData.id;
     }
 
-    await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+    const messageRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       method: "POST",
       headers,
       body: JSON.stringify({ role: "user", content: text }),
     });
+    const messageData = await messageRes.json();
+    if (!messageRes.ok) {
+      console.error("Message post failed:", messageData);
+      throw new Error("Message post failed");
+    }
 
     const runRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
       method: "POST",
@@ -42,9 +51,14 @@ export default async function handler(req, res) {
       body: JSON.stringify({ assistant_id: assistantId }),
     });
     const runData = await runRes.json();
-    const runId = runData.id;
+    if (!runRes.ok) {
+      console.error("Run creation failed:", runData);
+      throw new Error(runData.error?.message || "Run failed");
+    }
 
+    const runId = runData.id;
     let status = runData.status;
+
     while (status !== "completed") {
       await new Promise(r => setTimeout(r, 1000));
       const statusCheck = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
@@ -53,7 +67,9 @@ export default async function handler(req, res) {
       });
       const statusData = await statusCheck.json();
       status = statusData.status;
+
       if (status === "failed" || status === "expired") {
+        console.error("Run status error", statusData);
         throw new Error("Run " + status);
       }
     }
