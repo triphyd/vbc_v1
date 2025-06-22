@@ -1,10 +1,19 @@
-// ── vbc_v3.js ──────────────────────────────────────────────────────────────
-console.log("🚀 vbc_v3.js loaded!");
-
+// vbc_v3.js
 ;(function() {
-  //
-  // 1) Inject widget CSS
-  //
+  console.log("🚀 vbc_v3.js loaded!");
+
+  // ── CONFIG ────────────────────────────────────────────────────────────────
+  // 1) Your Vercel app origin (where /api/sendMessage lives):
+  const API_HOST = "https://vbc-v1.vercel.app";
+
+  // 2) Your Calendly link placeholder replacement:
+  const CALENDLY_HTML = `<a
+    href="https://calendly.com/vesselenyit/30min"
+    target="_blank"
+    rel="noopener noreferrer"
+  >Rezervă aici</a>`;
+
+  // ── 1) INJECT CSS ──────────────────────────────────────────────────────────
   const css = `
     /* container holds the button only */
     #chat-widget {
@@ -78,8 +87,7 @@ console.log("🚀 vbc_v3.js loaded!");
         top: auto;
       }
     }
-
-    /* mobile: stretch top↔bottom with margins */
+    /* mobile: stretch */
     @media (max-width: 600px) {
       #chat-widget .chat-window {
         top:    env(safe-area-inset-top, 20px);
@@ -93,7 +101,7 @@ console.log("🚀 vbc_v3.js loaded!");
       }
     }
 
-    /* header + close button */
+    /* header + close */
     #chat-widget .chat-header {
       position: relative;
       background: #c40000;
@@ -130,6 +138,7 @@ console.log("🚀 vbc_v3.js loaded!");
       padding: 6px 8px;
       border-radius: 8px;
       display: inline-block;
+      white-space: pre-wrap;
     }
     #chat-widget .chat-body .message.bot {
       background: #333;
@@ -137,6 +146,12 @@ console.log("🚀 vbc_v3.js loaded!");
       padding: 6px 8px;
       border-radius: 8px;
       display: inline-block;
+      white-space: pre-wrap;
+    }
+    #chat-widget .chat-body .message.bot a {
+      color: #1a73e8;
+      text-decoration: underline;
+      cursor: pointer;
     }
     #chat-widget .chat-body .typing {
       display: flex;
@@ -174,13 +189,11 @@ console.log("🚀 vbc_v3.js loaded!");
       cursor: pointer;
     }
   `;
-  document.head.appendChild(
-    Object.assign(document.createElement("style"), { textContent: css })
-  );
+  const styleTag = document.createElement("style");
+  styleTag.textContent = css;
+  document.head.appendChild(styleTag);
 
-  //
-  // 2) Widget HTML
-  //
+  // ── 2) WIDGET MARKUP ───────────────────────────────────────────────────────
   const widget = document.createElement("div");
   widget.id = "chat-widget";
   widget.innerHTML = `
@@ -206,26 +219,23 @@ console.log("🚀 vbc_v3.js loaded!");
   `;
   document.body.appendChild(widget);
 
-  //
-  // 3) DOM refs & state
-  //
+  // ── 3) REFERENCES & STATE ─────────────────────────────────────────────────
   const btn      = widget.querySelector(".chat-button");
   const win      = widget.querySelector(".chat-window");
   const closeBtn = widget.querySelector(".close-button");
   const body     = widget.querySelector(".chat-body");
   const input    = widget.querySelector(".chat-input input");
   const sendBtn  = widget.querySelector(".chat-input button");
+  let   threadId = null;
 
-  //
-  // 4) Open / close logic + mobile keyboard resize
-  //
+  // ── 4) OPEN / CLOSE ───────────────────────────────────────────────────────
   btn.addEventListener("click", () => {
     widget.classList.add("expanded");
     input.focus();
     if (window.visualViewport) {
-      adjustViewport();
       window.visualViewport.addEventListener("resize", adjustViewport);
       window.visualViewport.addEventListener("scroll", adjustViewport);
+      adjustViewport();
     }
   });
   closeBtn.addEventListener("click", () => widget.classList.remove("expanded"));
@@ -238,24 +248,29 @@ console.log("🚀 vbc_v3.js loaded!");
     if (!vv) return;
     const margin = 20;
     win.style.top    = (vv.offsetTop + margin) + "px";
-    win.style.height = (vv.height - margin*2) + "px";
+    win.style.height = (vv.height - margin * 2) + "px";
     win.style.bottom = "auto";
   }
 
-  //
-  // 5) Helpers for messages
-  //
+  // ── 5) SCROLL UTILITY ─────────────────────────────────────────────────────
   function scrollToBottom() {
     body.scrollTop = body.scrollHeight;
   }
-  function appendMessage(text, who="bot") {
-    const div = document.createElement("div");
-    div.className = "message " + who;
-    if (who === "bot") div.textContent = text;
-    else              div.textContent = text;
-    body.appendChild(div);
+
+  // ── 6) APPEND MESSAGES ────────────────────────────────────────────────────
+  function appendMessage(raw, who = "bot") {
+    const m = document.createElement("div");
+    m.className = "message " + who;
+    if (who === "bot") {
+      // swap placeholder
+      m.innerHTML = raw.replace(/<CALENDLY>/g, CALENDLY_HTML);
+    } else {
+      m.textContent = raw;
+    }
+    body.appendChild(m);
     scrollToBottom();
   }
+
   function appendTyping() {
     const t = document.createElement("div");
     t.className = "typing bot";
@@ -265,125 +280,51 @@ console.log("🚀 vbc_v3.js loaded!");
     return t;
   }
 
-  //
-  // 6) OpenAI Assistants API
-  //
-  const assistantId = "asst_M7Ik5XISOOnmrKY1Qu2wAWws";
-  const apiKey      = process.env.OPENAI_API_KEY /* or inline your sk-... here */;
-  let   threadId    = null;
-
+  // ── 7) SEND / RECEIVE ─────────────────────────────────────────────────────
   async function sendMessage(text) {
     appendMessage(text, "user");
     input.value = "";
     const typingEl = appendTyping();
 
     try {
-      // 1) create thread if needed
-      if (!threadId) {
-        const r0 = await fetch("https://api.openai.com/v1/threads", {
-          method:  "POST",
-          headers: {
-            "Content-Type":  "application/json",
-            "Authorization": `Bearer ${apiKey}`,
-            "OpenAI-Beta":   "assistants=v2"
-          },
-          body: "{}"
-        });
-        const j0 = await r0.json();
-        if (!r0.ok) throw new Error(j0.error?.message||r0.status);
-        threadId = j0.id;
-      }
-
-      // 2) post user message
-      await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+      const res = await fetch(`${API_HOST}/api/sendMessage`, {
         method:  "POST",
-        headers: {
-          "Content-Type":  "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-          "OpenAI-Beta":   "assistants=v2"
-        },
-        body: JSON.stringify({ role:"user", content:text })
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ text, threadId })
       });
+      const { reply, threadId: newThread } = await res.json();
+      typingEl.remove();
 
-      // 3) start a run
-      const r2 = await fetch(
-        `https://api.openai.com/v1/threads/${threadId}/runs`,
-        {
-          method:  "POST",
-          headers: {
-            "Content-Type":  "application/json",
-            "Authorization": `Bearer ${apiKey}`,
-            "OpenAI-Beta":   "assistants=v2"
-          },
-          body: JSON.stringify({ assistant_id:assistantId })
-        }
-      );
-      const j2 = await r2.json();
-      if (!r2.ok) throw new Error(j2.error?.message||r2.status);
-      const runId = j2.id;
-
-      // 4) poll until done
-      let status = j2.status;
-      while (status !== "completed") {
-        await new Promise(r=>setTimeout(r,1000));
-        const rc = await fetch(
-          `https://api.openai.com/v1/threads/${threadId}/runs/${runId}`,
-          { method:"GET",
-            headers: {
-              "Authorization": `Bearer ${apiKey}`,
-              "OpenAI-Beta":   "assistants=v2"
-            }
-          }
-        );
-        const jc = await rc.json();
-        if (!rc.ok) throw new Error(jc.error?.message||rc.status);
-        status = jc.status;
-        if (status==="failed"||status==="expired") throw new Error("Run "+status);
+      if (reply) {
+        appendMessage(reply.trim(), "bot");
+        threadId = newThread;
+      } else {
+        appendMessage("Error: no reply received.", "bot");
       }
-
-      // 5) fetch all messages & find assistant reply
-      const rm = await fetch(
-        `https://api.openai.com/v1/threads/${threadId}/messages`,
-        { method:"GET",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "OpenAI-Beta":   "assistants=v2"
-          }
-        }
-      );
-      const jm = await rm.json();
-      if (!rm.ok) throw new Error(jm.error?.message||rm.status);
-
-      const msg   = jm.data.find(m=>m.role==="assistant");
-      const reply = msg?.content?.[0]?.text?.value;
-      if (!reply) throw new Error("No assistant reply");
-
-      // 6) show it
+    } catch (err) {
       typingEl.remove();
-      appendMessage(reply.trim(), "bot");
-    }
-    catch(err) {
-      console.error("⚠️ send error", err);
-      typingEl.remove();
-      appendMessage("Error: " + err.message, "bot");
+      appendMessage("Error: could not reach assistant.", "bot");
+      console.error(err);
     }
   }
 
-  // 7) wire up send
   sendBtn.addEventListener("click", () => {
     const t = input.value.trim();
     if (t) sendMessage(t);
   });
   input.addEventListener("keypress", e => {
-    if (e.key==="Enter" && input.value.trim()) sendMessage(input.value.trim());
+    if (e.key === "Enter" && input.value.trim()) {
+      sendMessage(input.value.trim());
+    }
   });
 
-  // 8) initial greeting
+  // ── 8) INITIAL GREETING & BOUNCE ──────────────────────────────────────────
   appendMessage("Ceau! Bine ai venit la VBC Barbershop! Cum te pot ajuta?", "bot");
 
-  // 9) bounce pulse
-  function pulse(){ btn.classList.add("bounce"); }
-  btn.addEventListener("animationend",()=>btn.classList.remove("bounce"));
-  setTimeout(()=>{ pulse(); setInterval(pulse,10000); },3000);
+  btn.addEventListener("animationend", () => btn.classList.remove("bounce"));
+  setTimeout(() => {
+    btn.classList.add("bounce");
+    setInterval(() => btn.classList.add("bounce"), 10000);
+  }, 3000);
 
 })();
