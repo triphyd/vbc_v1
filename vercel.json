@@ -1,7 +1,8 @@
 {
   "functions": {
     "api/sendMessage.js": {
-      "runtime": "nodejs18"
+      "runtime": "nodejs",
+      "runtimeVersion": "18.x"
     }
   },
   "routes": [
