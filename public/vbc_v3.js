@@ -3,27 +3,33 @@ console.log("🚀 Secure vbc_v3.js loaded!");
 
 (function () {
   //
-  // 1) UTILITY: decode HTML entities so "<a>" comes through correctly
+  // 1) INJECT WIDGET STYLES (including link-clickability)
   //
-  function decodeHTMLEntities(str) {
-    const txt = document.createElement("textarea");
-    txt.innerHTML = str;
-    return txt.value;
-  }
-
-  //
-  // 2) WIDGET SETUP
-  //
-  // — insert your real CSS here instead of the placeholder
   const styleTag = document.createElement("style");
   styleTag.textContent = `
-    /* —— your widget CSS —— */
-    #chat-widget { /* … */ }
-    /* etc. */
+    /* —— your existing widget CSS goes above this line —— */
+
+    /* make sure <a> tags are interactive */
+    #chat-widget .chat-body .message.bot a {
+      color: #1a73e8;
+      text-decoration: underline;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    /* ensure messages wrap nicely */
+    #chat-widget .chat-body .message {
+      white-space: pre-wrap;
+    }
+
+    /* —— end of your widget CSS —— */
   `;
   document.head.appendChild(styleTag);
 
-  // build the widget’s HTML; replace the `…` below with your actual markup
+  //
+  // 2) BUILD THE CHAT WIDGET HTML
+  //    Replace the placeholder below with your actual markup if needed
+  //
   const widget = document.createElement("div");
   widget.id = "chat-widget";
   widget.innerHTML = `
@@ -43,7 +49,7 @@ console.log("🚀 Secure vbc_v3.js loaded!");
   document.body.appendChild(widget);
 
   //
-  // 3) ELEMENT REFERENCES
+  // 3) QUERY SELECTORS
   //
   const btn      = widget.querySelector(".chat-button");
   const win      = widget.querySelector(".chat-window");
@@ -51,11 +57,10 @@ console.log("🚀 Secure vbc_v3.js loaded!");
   const body     = widget.querySelector(".chat-body");
   const input    = widget.querySelector(".chat-input input");
   const sendBtn  = widget.querySelector(".chat-input button");
-
-  let threadId = null;  // track ongoing conversation
+  let threadId   = null;  // maintain conversation context
 
   //
-  // 4) OPEN / CLOSE BEHAVIOR
+  // 4) OPEN / CLOSE LOGIC
   //
   btn.addEventListener("click", () => {
     widget.classList.add("expanded");
@@ -71,17 +76,17 @@ console.log("🚀 Secure vbc_v3.js loaded!");
   });
 
   //
-  // 5) HELPERS TO SHOW MESSAGES
+  // 5) MESSAGE APPENDERS
   //
   function scrollToBottom() {
     body.scrollTop = body.scrollHeight;
   }
 
-  function appendMessage(rawHtml, who = "bot") {
+  function appendMessage(html, who = "bot") {
     const div = document.createElement("div");
     div.className = `message ${who}`;
-    // decode any entities, then inject real HTML
-    div.innerHTML = decodeHTMLEntities(rawHtml);
+    // **Using innerHTML** so any <a href="…">…</a> is live
+    div.innerHTML = html;
     body.appendChild(div);
     scrollToBottom();
   }
@@ -96,30 +101,28 @@ console.log("🚀 Secure vbc_v3.js loaded!");
   }
 
   //
-  // 6) SEND / RECEIVE
+  // 6) SEND / RECEIVE TO YOUR VERCEL FUNCTION
   //
   async function sendMessage(text) {
-    // show user’s message
+    // show user message
     appendMessage(text, "user");
     input.value = "";
 
-    // show “typing…” indicator
+    // show typing indicator
     const typingEl = appendTyping();
 
     try {
-      // POST to your Vercel function
-      const r = await fetch("/api/sendMessage", {
+      const res = await fetch("/api/sendMessage", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ text, threadId })
+        body:    JSON.stringify({ text, threadId }),
       });
-      const j = await r.json();
+      const j = await res.json();
       typingEl.remove();
 
       if (j.reply) {
-        // decode + render assistant’s reply
+        // **directly render** the assistant’s HTML reply
         appendMessage(j.reply.trim(), "bot");
-        // keep conversation context
         threadId = j.threadId;
       } else {
         appendMessage("Error: no reply received.", "bot");
@@ -131,7 +134,7 @@ console.log("🚀 Secure vbc_v3.js loaded!");
     }
   }
 
-  // wire up send button + Enter key
+  // wire up Send button + Enter key
   sendBtn.addEventListener("click", () => {
     const t = input.value.trim();
     if (t) sendMessage(t);
@@ -143,8 +146,7 @@ console.log("🚀 Secure vbc_v3.js loaded!");
   });
 
   //
-  // 7) INITIAL WELCOME
+  // 7) INITIAL WELCOME MESSAGE
   //
   appendMessage("Ceau! Bine ai venit la VBC Barbershop! Cum te pot ajuta?", "bot");
-
 })();
