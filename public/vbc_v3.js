@@ -3,29 +3,25 @@ console.log("🚀 vbc_v3.js loaded!");
 
 (function() {
   //
-  // 1) INJECT CSS (including clickable links)
+  // 1. Inject minimal CSS (including clickable links)
   //
-  const css = `
-    /* ── YOUR EXISTING STYLES ABOVE ── */
+  const style = document.createElement("style");
+  style.textContent = `
+    /* — your other widget styles here — */
 
     #chat-widget .chat-body .message.bot a {
       color: #1a73e8;
       text-decoration: underline;
       cursor: pointer;
-      pointer-events: auto;
     }
     #chat-widget .chat-body .message {
       white-space: pre-wrap;
     }
-
-    /* ── YOUR EXISTING STYLES BELOW ── */
   `;
-  const styleTag = document.createElement("style");
-  styleTag.textContent = css;
-  document.head.appendChild(styleTag);
+  document.head.appendChild(style);
 
   //
-  // 2) BUILD WIDGET HTML
+  // 2. Build the widget HTML
   //
   const widget = document.createElement("div");
   widget.id = "chat-widget";
@@ -46,7 +42,7 @@ console.log("🚀 vbc_v3.js loaded!");
   document.body.appendChild(widget);
 
   //
-  // 3) REFS & STATE
+  // 3. Element refs & state
   //
   const btn      = widget.querySelector(".chat-button");
   const win      = widget.querySelector(".chat-window");
@@ -57,7 +53,7 @@ console.log("🚀 vbc_v3.js loaded!");
   let   threadId = null;
 
   //
-  // 4) OPEN/CLOSE LOGIC
+  // 4. Open / close behavior
   //
   btn.addEventListener("click", () => {
     widget.classList.add("expanded");
@@ -73,24 +69,24 @@ console.log("🚀 vbc_v3.js loaded!");
   });
 
   //
-  // 5) MESSAGE HELPERS
+  // 5. Helpers for messages
   //
-  function scrollToBottom() {
+  function scrollBottom() {
     body.scrollTop = body.scrollHeight;
   }
 
-  function appendMessage(content, who = "bot", isHtml = false) {
+  function appendMessage(text, who = "bot") {
     const msg = document.createElement("div");
     msg.className = `message ${who}`;
-    if (isHtml) {
-      // raw HTML from bot (e.g. <a href="…">)
-      msg.innerHTML = content;
+    if (who === "bot") {
+      // Bot text may contain HTML (links, etc)
+      msg.innerHTML = text;
     } else {
-      // plain text
-      msg.textContent = content;
+      // User text always plaintext
+      msg.textContent = text;
     }
     body.appendChild(msg);
-    scrollToBottom();
+    scrollBottom();
   }
 
   function appendTyping() {
@@ -98,15 +94,15 @@ console.log("🚀 vbc_v3.js loaded!");
     t.className = "typing bot";
     t.innerHTML = "<span></span><span></span><span></span>";
     body.appendChild(t);
-    scrollToBottom();
+    scrollBottom();
     return t;
   }
 
   //
-  // 6) SEND & RECEIVE
+  // 6. Send & receive
   //
   async function sendMessage(text) {
-    appendMessage(text, "user", false);
+    appendMessage(text, "user");
     input.value = "";
     const typingEl = appendTyping();
 
@@ -116,19 +112,18 @@ console.log("🚀 vbc_v3.js loaded!");
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ text, threadId }),
       });
-      const json = await res.json();
+      const { reply, threadId: newThread } = await res.json();
       typingEl.remove();
 
-      if (json.reply) {
-        // **Assume** json.reply contains real HTML for links
-        appendMessage(json.reply.trim(), "bot", true);
-        threadId = json.threadId;
+      if (reply) {
+        appendMessage(reply.trim(), "bot");  // **real HTML** here
+        threadId = newThread;
       } else {
-        appendMessage("Error: no reply received.", "bot", false);
+        appendMessage("Error: no reply received.", "bot");
       }
     } catch (err) {
       typingEl.remove();
-      appendMessage("Error: could not reach assistant.", "bot", false);
+      appendMessage("Error: could not reach assistant.", "bot");
       console.error(err);
     }
   }
@@ -144,11 +139,7 @@ console.log("🚀 vbc_v3.js loaded!");
   });
 
   //
-  // 7) WELCOME MESSAGE
+  // 7. Initial greeting
   //
-  appendMessage(
-    "Ceau! Bine ai venit la VBC Barbershop! Cum te pot ajuta?",
-    "bot",
-    false
-  );
+  appendMessage("Ceau! Bine ai venit la VBC Barbershop! Cum te pot ajuta?", "bot");
 })();
