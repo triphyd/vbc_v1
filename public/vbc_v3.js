@@ -3,12 +3,13 @@ console.log("🚀 vbc_v3.js loaded!");
 
 (function() {
   //
-  // 1. Inject minimal CSS (including clickable links)
+  // 1. Inject CSS (including link styling)
   //
   const style = document.createElement("style");
   style.textContent = `
-    /* — your other widget styles here — */
+    /* — your existing widget CSS above — */
 
+    /* ensure bot links are clickable */
     #chat-widget .chat-body .message.bot a {
       color: #1a73e8;
       text-decoration: underline;
@@ -17,11 +18,13 @@ console.log("🚀 vbc_v3.js loaded!");
     #chat-widget .chat-body .message {
       white-space: pre-wrap;
     }
+
+    /* — your existing widget CSS below — */
   `;
   document.head.appendChild(style);
 
   //
-  // 2. Build the widget HTML
+  // 2. Build widget HTML
   //
   const widget = document.createElement("div");
   widget.id = "chat-widget";
@@ -34,7 +37,7 @@ console.log("🚀 vbc_v3.js loaded!");
       </div>
       <div class="chat-body"></div>
       <div class="chat-input">
-        <input type="text" placeholder="Type your message…" />
+        <input type="text" placeholder="Type your message…"/>
         <button>Send</button>
       </div>
     </div>
@@ -53,7 +56,7 @@ console.log("🚀 vbc_v3.js loaded!");
   let   threadId = null;
 
   //
-  // 4. Open / close behavior
+  // 4. Open/close logic
   //
   btn.addEventListener("click", () => {
     widget.classList.add("expanded");
@@ -69,7 +72,7 @@ console.log("🚀 vbc_v3.js loaded!");
   });
 
   //
-  // 5. Helpers for messages
+  // 5. Helpers
   //
   function scrollBottom() {
     body.scrollTop = body.scrollHeight;
@@ -78,13 +81,18 @@ console.log("🚀 vbc_v3.js loaded!");
   function appendMessage(text, who = "bot") {
     const msg = document.createElement("div");
     msg.className = `message ${who}`;
+
     if (who === "bot") {
-      // Bot text may contain HTML (links, etc)
-      msg.innerHTML = text;
+      // Replace placeholder with real link
+      const withLink = text.replace(
+        /<CALENDLY>/g,
+        `<a href="https://calendly.com/vesselenyit/30min" target="_blank" rel="noopener noreferrer">Rezervă aici</a>`
+      );
+      msg.innerHTML = withLink;
     } else {
-      // User text always plaintext
       msg.textContent = text;
     }
+
     body.appendChild(msg);
     scrollBottom();
   }
@@ -107,7 +115,7 @@ console.log("🚀 vbc_v3.js loaded!");
     const typingEl = appendTyping();
 
     try {
-      const res  = await fetch("/api/sendMessage", {
+      const res = await fetch("/api/sendMessage", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ text, threadId }),
@@ -116,7 +124,7 @@ console.log("🚀 vbc_v3.js loaded!");
       typingEl.remove();
 
       if (reply) {
-        appendMessage(reply.trim(), "bot");  // **real HTML** here
+        appendMessage(reply.trim(), "bot");
         threadId = newThread;
       } else {
         appendMessage("Error: no reply received.", "bot");
@@ -141,5 +149,8 @@ console.log("🚀 vbc_v3.js loaded!");
   //
   // 7. Initial greeting
   //
-  appendMessage("Ceau! Bine ai venit la VBC Barbershop! Cum te pot ajuta?", "bot");
+  appendMessage(
+    "Ceau! Bine ai venit la VBC Barbershop! Cum te pot ajuta?",
+    "bot"
+  );
 })();
