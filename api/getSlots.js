@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   const token = process.env.CALENDLY_API_KEY;
   const userUri = barber === "robby"
     ? "https://api.calendly.com/users/your-robby-id"
-    : "https://api.calendly.com/users/your-sobby-id";
+    : "https://api.calendly.com/users/e97cfb9d-8610-4d2d-b401-7f1401ee2651";
 
   const dateRange = getDateRange(preferred_day); // optional helper to limit to 1 day
 
