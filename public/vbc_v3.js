@@ -1,33 +1,31 @@
 // vbc_v3.js
-console.log("🚀 Secure vbc_v3.js loaded!");
+console.log("🚀 vbc_v3.js loaded!");
 
-(function () {
+(function() {
   //
-  // 1) WIDGET CSS (including clickable <a> tags)
+  // 1) INJECT CSS (including clickable links)
   //
-  const style = document.createElement("style");
-  style.textContent = `
-    /* ── YOUR EXISTING CHAT CSS ABOVE THIS LINE ── */
+  const css = `
+    /* ── YOUR EXISTING STYLES ABOVE ── */
 
-    /* ensure bot‐generated links are clickable */
     #chat-widget .chat-body .message.bot a {
       color: #1a73e8;
       text-decoration: underline;
       cursor: pointer;
       pointer-events: auto;
     }
-
-    /* wrap long lines */
     #chat-widget .chat-body .message {
       white-space: pre-wrap;
     }
 
-    /* ── YOUR EXISTING CHAT CSS BELOW THIS LINE ── */
+    /* ── YOUR EXISTING STYLES BELOW ── */
   `;
-  document.head.appendChild(style);
+  const styleTag = document.createElement("style");
+  styleTag.textContent = css;
+  document.head.appendChild(styleTag);
 
   //
-  // 2) WIDGET HTML
+  // 2) BUILD WIDGET HTML
   //
   const widget = document.createElement("div");
   widget.id = "chat-widget";
@@ -48,7 +46,7 @@ console.log("🚀 Secure vbc_v3.js loaded!");
   document.body.appendChild(widget);
 
   //
-  // 3) ELEMENTS & STATE
+  // 3) REFS & STATE
   //
   const btn      = widget.querySelector(".chat-button");
   const win      = widget.querySelector(".chat-window");
@@ -59,7 +57,7 @@ console.log("🚀 Secure vbc_v3.js loaded!");
   let   threadId = null;
 
   //
-  // 4) OPEN/CLOSE BEHAVIOR
+  // 4) OPEN/CLOSE LOGIC
   //
   btn.addEventListener("click", () => {
     widget.classList.add("expanded");
@@ -75,17 +73,22 @@ console.log("🚀 Secure vbc_v3.js loaded!");
   });
 
   //
-  // 5) MESSAGES HELPERS
+  // 5) MESSAGE HELPERS
   //
   function scrollToBottom() {
     body.scrollTop = body.scrollHeight;
   }
 
-  function appendMessage(html, who = "bot") {
+  function appendMessage(content, who = "bot", isHtml = false) {
     const msg = document.createElement("div");
     msg.className = `message ${who}`;
-    // **Directly set .innerHTML** so any <a>…</a> is real HTML
-    msg.innerHTML = html;
+    if (isHtml) {
+      // raw HTML from bot (e.g. <a href="…">)
+      msg.innerHTML = content;
+    } else {
+      // plain text
+      msg.textContent = content;
+    }
     body.appendChild(msg);
     scrollToBottom();
   }
@@ -103,28 +106,29 @@ console.log("🚀 Secure vbc_v3.js loaded!");
   // 6) SEND & RECEIVE
   //
   async function sendMessage(text) {
-    appendMessage(text, "user");
+    appendMessage(text, "user", false);
     input.value = "";
-    const loading = appendTyping();
+    const typingEl = appendTyping();
 
     try {
-      const res = await fetch("/api/sendMessage", {
+      const res  = await fetch("/api/sendMessage", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ text, threadId }),
       });
       const json = await res.json();
-      loading.remove();
+      typingEl.remove();
 
       if (json.reply) {
-        appendMessage(json.reply.trim(), "bot");
+        // **Assume** json.reply contains real HTML for links
+        appendMessage(json.reply.trim(), "bot", true);
         threadId = json.threadId;
       } else {
-        appendMessage("Error: no reply received.", "bot");
+        appendMessage("Error: no reply received.", "bot", false);
       }
     } catch (err) {
-      loading.remove();
-      appendMessage("Error: could not reach assistant.", "bot");
+      typingEl.remove();
+      appendMessage("Error: could not reach assistant.", "bot", false);
       console.error(err);
     }
   }
@@ -140,7 +144,11 @@ console.log("🚀 Secure vbc_v3.js loaded!");
   });
 
   //
-  // 7) INITIAL GREETING
+  // 7) WELCOME MESSAGE
   //
-  appendMessage("Ceau! Bine ai venit la VBC Barbershop! Cum te pot ajuta?", "bot");
+  appendMessage(
+    "Ceau! Bine ai venit la VBC Barbershop! Cum te pot ajuta?",
+    "bot",
+    false
+  );
 })();
